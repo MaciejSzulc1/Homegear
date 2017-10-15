@@ -1195,7 +1195,8 @@ void Mqtt::publish(const std::string& topic, const std::vector<char>& data, bool
 	try
 	{
 		if(data.empty() || !_started) return;
-		std::string fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
+		// ORIG std::string fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
+		std::string fullTopic = _settings.prefix() + _settings.homegearId();
 		std::vector<char> packet;
 		std::vector<char> payload;
 		payload.reserve(fullTopic.size() + 2 + 2 + data.size());
