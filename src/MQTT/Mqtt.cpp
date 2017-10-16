@@ -1192,79 +1192,130 @@ void Mqtt::queueMessage(std::shared_ptr<MqttMessage>& message)
 
 void Mqtt::publish(const std::string& topic, const std::vector<char>& data, bool retain)
 {
-	try
-	{
-		if(data.empty() || !_started) return;
-		// ORIG std::string fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
-		std::string fullTopic = _settings.prefix() + _settings.homegearId();
-		std::vector<char> packet;
-		std::vector<char> payload;
-		payload.reserve(fullTopic.size() + 2 + 2 + data.size());
-		payload.push_back(fullTopic.size() >> 8);
-		payload.push_back(fullTopic.size() & 0xFF);
-		payload.insert(payload.end(), fullTopic.begin(), fullTopic.end());
-		int16_t id = 0;
-		while(id == 0) id = _packetId++;
-		payload.push_back(id >> 8);
-		payload.push_back(id & 0xFF);
+	bool isBluemix=true;
+
+// Format:
+// Fixed header
+// b1: type: 4b, val=3; DUP: 1b, QoS: 2B, Retail 1B
+// b2: remaining lengthBytes
+// ----------
+// Variable header
+// b3: MSB od dlogosci tematu
+// b4: LSB dlugosci tematu
+// b5... temat
+// bn+1 mesaage ID MSB
+// bn+2 message ID LSB
+// bn+3.... payload
+
+try
+{
+	if(data.empty() || !_started) return;
+
+	std::vector<char> packet;
+	std::vector<char> payload;
+	std::string fullTopic;
+	std::vector<char> identifier;
+
+	//Bufor na dodanie identyfikatora obiektu
+	if (isBluemix) {
+
+		identifier.reserve(9+topic.size());
+
+		identifier.push_back('}');
+		identifier.push_back('\"');
+		identifier.insert(identifier.end(), topic.begin(), topic.end());
+		identifier.push_back('\"');
+		identifier.push_back('=');
+		identifier.push_back('\"');
+		identifier.push_back('d');
+		identifier.push_back('i');
+		identifier.push_back('\"');
+		identifier.push_back('{');
+
+		fullTopic = _settings.prefix() + _settings.homegearId();
+		payload.reserve(identifier.size()+fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
+	} else {
+		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
+		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
+	}
+
+	payload.push_back(fullTopic.size() >> 8);
+	payload.push_back(fullTopic.size() & 0xFF);
+	payload.insert(payload.end(), fullTopic.begin(), fullTopic.end());
+	int16_t id = 0;
+	while(id == 0) id = _packetId++;
+	payload.push_back(id >> 8);
+	payload.push_back(id & 0xFF);
+
+	std::vector<char> lengthBytes;
+
+	if (isBluemix) {
+		payload.insert(payload.end(), identifier.begin(), identifier.end());
 		payload.insert(payload.end(), data.begin(), data.end());
-		std::vector<char> lengthBytes = getLengthBytes(payload.size());
-		packet.reserve(1 + lengthBytes.size() + payload.size());
-		retain && _settings.retain() ? packet.push_back(0x33) : packet.push_back(0x32);
-		packet.insert(packet.end(), lengthBytes.begin(), lengthBytes.end());
-		packet.insert(packet.end(), payload.begin(), payload.end());
-		int32_t j = 0;
-		std::vector<char> response(7);
-		if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Publishing topic " + fullTopic);
-		for(int32_t i = 0; i < 25; i++)
+		lengthBytes = getLengthBytes(payload.size()+identifier.size());
+	} else {
+		payload.insert(payload.end(), data.begin(), data.end());
+		lengthBytes = getLengthBytes(payload.size());
+	}
+
+	packet.reserve(1 + lengthBytes.size() + payload.size());
+	retain && _settings.retain() ? packet.push_back(0x33) : packet.push_back(0x32);
+	packet.insert(packet.end(), lengthBytes.begin(), lengthBytes.end());
+	packet.insert(packet.end(), payload.begin(), payload.end());
+	int32_t j = 0;
+	std::vector<char> response(7);
+	if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Publishing topic " + fullTopic);
+	for(int32_t i = 0; i < 25; i++)
+	{
+		if(_reconnecting)
 		{
-			if(_reconnecting)
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			if(!_started) return;
+			continue;
+		}
+		if(!_socket->connected()) reconnect();
+		if(!_started) break;
+		if(i == 1) packet[0] |= 8;
+		getResponse(packet, response, 0x40, id, true);
+		if(response.empty())
+		{
+			//_socket->close();
+			//reconnect();
+			if(i >= 5) _out.printWarning("Warning: No PUBACK received.");
+		}
+		else return;
+
+		j = 0;
+		while(_started && j < 5)
+		{
+
+			if(i < 5)
 			{
+				j += 5;
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			}
+			else
+			{
+				j++;
 				std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-				if(!_started) return;
-				continue;
-			}
-			if(!_socket->connected()) reconnect();
-			if(!_started) break;
-			if(i == 1) packet[0] |= 8;
-			getResponse(packet, response, 0x40, id, true);
-			if(response.empty())
-			{
-				//_socket->close();
-				//reconnect();
-				if(i >= 5) _out.printWarning("Warning: No PUBACK received.");
-			}
-			else return;
-
-			j = 0;
-			while(_started && j < 5)
-			{
-
-				if(i < 5)
-				{
-					j += 5;
-					std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				}
-				else
-				{
-					j++;
-					std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-				}
 			}
 		}
 	}
-	catch(const std::exception& ex)
-	{
-		_out.printEx(__FILE__, __LINE__, __PRETTY_FUNCTION__, ex.what());
-	}
-	catch(BaseLib::Exception& ex)
-	{
-		_out.printEx(__FILE__, __LINE__, __PRETTY_FUNCTION__, ex.what());
-	}
-	catch(...)
-	{
-		_out.printEx(__FILE__, __LINE__, __PRETTY_FUNCTION__);
-	}
+}
+catch(const std::exception& ex)
+{
+	_out.printEx(__FILE__, __LINE__, __PRETTY_FUNCTION__, ex.what());
+}
+catch(BaseLib::Exception& ex)
+{
+	_out.printEx(__FILE__, __LINE__, __PRETTY_FUNCTION__, ex.what());
+}
+catch(...)
+{
+	_out.printEx(__FILE__, __LINE__, __PRETTY_FUNCTION__);
+}
+
+
 }
 
 void Mqtt::processQueueEntry(int32_t index, std::shared_ptr<BaseLib::IQueueEntry>& entry)
