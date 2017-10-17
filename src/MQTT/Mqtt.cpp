@@ -739,7 +739,7 @@ void Mqtt::send(const std::vector<char>& data)
 {
 	try
 	{
-		if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Sending: " + BaseLib::HelperFunctions::getHexString(data));
+		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: Sending: " + BaseLib::HelperFunctions::getHexString(data));
 		_socket->proofwrite(data);
 	}
 	catch(BaseLib::SocketClosedException&)
@@ -1266,7 +1266,6 @@ try
 	int32_t j = 0;
 	std::vector<char> response(7);
 	if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Publishing topic   " + fullTopic);
-	if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Publishing payload " + payload);
 	for(int32_t i = 0; i < 25; i++)
 	{
 		if(_reconnecting)
