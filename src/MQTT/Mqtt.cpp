@@ -754,6 +754,7 @@ void Mqtt::subscribe(std::string topic)
 {
 	try
 	{
+		if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Subscribe topic " + topic);
 		std::vector<char> payload;
 		payload.reserve(200);
 		int16_t id = 0;
@@ -1264,7 +1265,8 @@ try
 	packet.insert(packet.end(), payload.begin(), payload.end());
 	int32_t j = 0;
 	std::vector<char> response(7);
-	if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Publishing topic " + fullTopic);
+	if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Publishing topic   " + fullTopic);
+	if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Publishing payload " + payload);
 	for(int32_t i = 0; i < 25; i++)
 	{
 		if(_reconnecting)
