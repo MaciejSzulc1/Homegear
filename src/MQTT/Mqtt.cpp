@@ -836,6 +836,8 @@ void Mqtt::reconnect()
 
 void Mqtt::connect()
 {
+   bool isBluemix=true;
+      
 	_reconnecting = true;
 	_connectMutex.lock();
 	for(int32_t i = 0; i < 5; i++)
@@ -906,10 +908,15 @@ void Mqtt::connect()
 				_out.printInfo("Info: Successfully connected to MQTT server using protocol version 4.");
 				_connected = true;
 				_connectMutex.unlock();
-				subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
-				subscribe(_settings.prefix() + _settings.homegearId() + "/set/#");
-				subscribe(_settings.prefix() + _settings.homegearId() + "/value/#");
-				subscribe(_settings.prefix() + _settings.homegearId() + "/config/#");
+            if (isBluemix) { 
+               subscribe("iotdm-1/response);
+               subscribe("iotdm-1/#");
+            } else {
+				    subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
+				    subscribe(_settings.prefix() + _settings.homegearId() + "/set/#");
+				    subscribe(_settings.prefix() + _settings.homegearId() + "/value/#");
+				    subscribe(_settings.prefix() + _settings.homegearId() + "/config/#");
+            }
 				_reconnecting = false;
 				return;
 			}
