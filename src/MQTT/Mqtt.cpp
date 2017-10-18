@@ -1062,7 +1062,7 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::string& key, Base
 {
 	bool isBluemix=true;
 	if (isBluemix) {
-		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (peerId="+peerId+", channel="+channel+", key="+key+", value="+value);
+		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (peerId="+std::to_string(peerId)+", channel="+std::to_string(channel)+", key="+key+", value="+value->stringValue);
 	}
 	try
 	{
@@ -1121,7 +1121,7 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::strin
 {
 	bool isBluemix=true;
 	if (isBluemix) {
-		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (peerId="+peerId+", channel="+channel+", keys="+keys+", values="+values);
+		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (peerId="+std::to_string(peerId)+", channel="+std::to_string(channel)+", keys, values");
 	}
 	try
 	{
