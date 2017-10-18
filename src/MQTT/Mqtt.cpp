@@ -837,7 +837,7 @@ void Mqtt::reconnect()
 void Mqtt::connect()
 {
    bool isBluemix=true;
-      
+
 	_reconnecting = true;
 	_connectMutex.lock();
 	for(int32_t i = 0; i < 5; i++)
@@ -908,8 +908,8 @@ void Mqtt::connect()
 				_out.printInfo("Info: Successfully connected to MQTT server using protocol version 4.");
 				_connected = true;
 				_connectMutex.unlock();
-            if (isBluemix) { 
-               subscribe("iotdm-1/response);
+            if (isBluemix) {
+               subscribe("iotdm-1/response");
                subscribe("iotdm-1/#");
             } else {
 				    subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
@@ -1028,8 +1028,15 @@ void Mqtt::disconnect()
 	}
 }
 
+
+
+
 void Mqtt::queueMessage(std::string topic, std::string& payload)
 {
+	bool isBluemix=true;
+	if (isBluemix) {
+		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (string, string): topic:" + topic + " payload:"+payload);
+	}
 	try
 	{
 		std::shared_ptr<MqttMessage> message = std::make_shared<MqttMessage>();
@@ -1053,6 +1060,10 @@ void Mqtt::queueMessage(std::string topic, std::string& payload)
 
 void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::string& key, BaseLib::PVariable& value)
 {
+	bool isBluemix=true;
+	if (isBluemix) {
+		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (peerId="+peerId+", channel="+channel+", key="+key+", value="+value);
+	}
 	try
 	{
 		bool retain = key.compare(0, 5, "PRESS") != 0;
@@ -1108,6 +1119,10 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::string& key, Base
 
 void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::string>& keys, std::vector<BaseLib::PVariable>& values)
 {
+	bool isBluemix=true;
+	if (isBluemix) {
+		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (peerId="+peerId+", channel="+channel+", keys="+keys+", values="+values);
+	}
 	try
 	{
 		if(keys.empty() || keys.size() != values.size()) return;
@@ -1178,6 +1193,10 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::strin
 
 void Mqtt::queueMessage(std::shared_ptr<MqttMessage>& message)
 {
+	bool isBluemix=true;
+	if (isBluemix) {
+		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (message)");
+	}
 	try
 	{
 		if(!_started || !message) return;
