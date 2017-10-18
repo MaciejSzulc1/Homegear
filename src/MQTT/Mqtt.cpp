@@ -1195,7 +1195,7 @@ void Mqtt::queueMessage(std::shared_ptr<MqttMessage>& message)
 {
 	bool isBluemix=true;
 	if (isBluemix) {
-		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (message)");
+		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (message) topic: "+message->topic+" message:"+ std::string(message->message.begin(), message->message.end()));
 	}
 	try
 	{
