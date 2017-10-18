@@ -1241,26 +1241,11 @@ try
 	std::vector<char> packet;
 	std::vector<char> payload;
 	std::string fullTopic;
-	std::vector<char> identifier;
 
 	//Bufor na dodanie identyfikatora obiektu
 	if (isBluemix) {
-
-		identifier.reserve(9+topic.size());
-
-		identifier.push_back('}');
-		identifier.push_back('\"');
-		identifier.insert(identifier.end(), topic.begin(), topic.end());
-		identifier.push_back('\"');
-		identifier.push_back('=');
-		identifier.push_back('\"');
-		identifier.push_back('d');
-		identifier.push_back('i');
-		identifier.push_back('\"');
-		identifier.push_back('{');
-
-		fullTopic = _settings.prefix() + _settings.homegearId();
-		payload.reserve(identifier.size()+fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
+		fullTopic = _settings.prefix();
+		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
 	} else {
 		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
 		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
@@ -1277,9 +1262,8 @@ try
 	std::vector<char> lengthBytes;
 
 	if (isBluemix) {
-		payload.insert(payload.end(), identifier.begin(), identifier.end());
 		payload.insert(payload.end(), data.begin(), data.end());
-		lengthBytes = getLengthBytes(payload.size()+identifier.size());
+		lengthBytes = getLengthBytes(payload.size());
 	} else {
 		payload.insert(payload.end(), data.begin(), data.end());
 		lengthBytes = getLengthBytes(payload.size());
