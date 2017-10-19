@@ -1260,7 +1260,7 @@ try
 	if(_settings.bmxTopic()) {
 		//format for IBM Bluemix topic in gateway mode is: iot-2/type/mydevice/id/device1/evt/status/fmt/json
 		//topic we got from queue=id/deviceName/evt/eventName/fmt/json
-		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
+		fullTopic = _settings.prefix() + _settings.bmxTypeId() + "/" + topic;
 		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + varheader (2) + topic + payload.
 	} else {
 		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
