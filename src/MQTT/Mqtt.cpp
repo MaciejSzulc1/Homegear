@@ -86,6 +86,9 @@ void Mqtt::start()
 		if(_started) return;
 		_started = true;
 
+
+		GD::out.printInfo(std::string("MQTT Client start v.: ")+__DATE__+"|"+__TIME__);
+
 		startQueue(0, false, 1, 0, SCHED_OTHER);
 		startQueue(1, false, _settings.processingThreadCount(), 0, SCHED_OTHER);
 
