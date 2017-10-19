@@ -88,6 +88,7 @@ void Mqtt::start()
 
 
 		GD::out.printInfo(std::string("MQTT Client start v.: ")+__DATE__+"|"+__TIME__);
+		GD::out.printInfo(std::string("MQTT Client using broker: ")+_settings.brokerHostname()+" on port:"+_settings.brokerPort());
 
 		startQueue(0, false, 1, 0, SCHED_OTHER);
 		startQueue(1, false, _settings.processingThreadCount(), 0, SCHED_OTHER);
@@ -267,6 +268,11 @@ void Mqtt::getResponse(const std::vector<char>& packet, std::vector<char>& respo
 		{
 			_out.printError("Error: Could not send packet to MQTT server, because we are not connected.");
 			return;
+		}
+
+		if (! _connected) {
+			_out.printError("Error: not connected but socket is connected.");
+			//looks like we think that we are connected but we are not.
 		}
 		std::shared_ptr<Request> request(new Request(responseType));
 		_requestsMutex.lock();
@@ -845,6 +851,7 @@ void Mqtt::connect()
 {
 	_reconnecting = true;
 	_connectMutex.lock();
+	_out.printInfo("MQTT Client Info: connecting to server as: "+_settings.clientName());
 	for(int32_t i = 0; i < 5; i++)
 	{
 		try
@@ -902,7 +909,7 @@ void Mqtt::connect()
 			bool retry = false;
 			if(response.size() != 4)
 			{
-				if(response.size() == 0) {}
+				if(response.size() == 0) {_out.printError("Error: zero-sized reply from server using v4 protocol.");}
 				else if(response.size() != 4) _out.printError("Error: CONNACK packet has wrong size.");
 				else if(response[0] != 0x20 || response[1] != 0x02 || response[2] != 0) _out.printError("Error: CONNACK has wrong content.");
 				else if(response[3] != 1) printConnectionError(response[3]);
