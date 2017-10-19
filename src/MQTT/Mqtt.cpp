@@ -710,7 +710,7 @@ void Mqtt::processPublish(std::vector<char>& data)
 				_out.printWarning("Warning: Could not decode MQTT RPC packet.");
 				return;
 			}
-			GD::out.printInfo("MQTT Client Info: MQTT RPC call received. Method: " + methodName);
+			GD::out.printInfo("Info: MQTT RPC call received. Method: " + methodName);
 			BaseLib::PVariable response = GD::rpcServers.begin()->second.callMethod(methodName, parameters);
 			std::shared_ptr<MqttMessage> responseData(new MqttMessage());
 			_jsonEncoder->encodeMQTTResponse(methodName, response, messageId, responseData->message);
@@ -741,7 +741,7 @@ void Mqtt::send(const std::vector<char>& data)
 {
 	try
 	{
-		if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Sending (hex): " + BaseLib::HelperFunctions::getHexString(data));
+		if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Sending: " + BaseLib::HelperFunctions::getHexString(data));
 
 		_socket->proofwrite(data);
 	}
