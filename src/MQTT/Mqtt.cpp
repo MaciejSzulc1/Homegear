@@ -266,10 +266,7 @@ void Mqtt::getResponse(const std::vector<char>& packet, std::vector<char>& respo
 			return;
 		}
 
-		if (! _connected) {
-			_out.printError("Error: not connected but socket is connected.");
-			//looks like we think that we are connected but we are not.
-		}
+
 		std::shared_ptr<Request> request(new Request(responseType));
 		_requestsMutex.lock();
 		_requests[packetId] = request;
@@ -627,7 +624,7 @@ void Mqtt::processPublish(std::vector<char>& data)
 
 			if(peerId == 0 && channel < 0)
 			{
-				GD::out.printInfo("MQTT Client Info: MQTT RPC call received. Method: setSystemVariable");
+				GD::out.printInfo("Info: MQTT RPC call received. Method: setSystemVariable");
 				BaseLib::PVariable parameters(new BaseLib::Variable(BaseLib::VariableType::tArray));
 				parameters->arrayValue->reserve(2);
 				parameters->arrayValue->push_back(BaseLib::PVariable(new BaseLib::Variable(parts.at(5))));
@@ -636,7 +633,7 @@ void Mqtt::processPublish(std::vector<char>& data)
 			}
 			else if(peerId != 0 && channel < 0)
 			{
-				GD::out.printInfo("MQTT Client Info: MQTT RPC call received. Method: setMetadata");
+				GD::out.printInfo("Info: MQTT RPC call received. Method: setMetadata");
 				BaseLib::PVariable parameters(new BaseLib::Variable(BaseLib::VariableType::tArray));
 				parameters->arrayValue->reserve(3);
 				parameters->arrayValue->push_back(BaseLib::PVariable(new BaseLib::Variable((uint32_t)peerId)));
@@ -646,7 +643,7 @@ void Mqtt::processPublish(std::vector<char>& data)
 			}
 			else
 			{
-				GD::out.printInfo("MQTT Client Info: MQTT RPC call received. Method: setValue");
+				GD::out.printInfo("Info: MQTT RPC call received. Method: setValue");
 				BaseLib::PVariable parameters(new BaseLib::Variable(BaseLib::VariableType::tArray));
 				parameters->arrayValue->reserve(4);
 				parameters->arrayValue->push_back(BaseLib::PVariable(new BaseLib::Variable((uint32_t)peerId)));
@@ -660,7 +657,7 @@ void Mqtt::processPublish(std::vector<char>& data)
 		{
 			uint64_t peerId = BaseLib::Math::getNumber(parts.at(3));
 			int32_t channel = BaseLib::Math::getNumber(parts.at(4));
-			GD::out.printInfo("MQTT Client Info: MQTT RPC call received. Method: putParamset");
+			GD::out.printInfo("Info: MQTT RPC call received. Method: putParamset");
 			BaseLib::PVariable parameters(new BaseLib::Variable(BaseLib::VariableType::tArray));
 			parameters->arrayValue->reserve(4);
 			parameters->arrayValue->push_back(BaseLib::PVariable(new BaseLib::Variable((uint32_t)peerId)));
@@ -744,9 +741,7 @@ void Mqtt::send(const std::vector<char>& data)
 {
 	try
 	{
-		if(GD::bl->debugLevel >= 4) {
-			_out.printDebug("Debug: Sending (hex): " + BaseLib::HelperFunctions::getHexString(data));
-		}
+		if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Sending (hex): " + BaseLib::HelperFunctions::getHexString(data));
 
 		_socket->proofwrite(data);
 	}
@@ -846,7 +841,6 @@ void Mqtt::connect()
 {
 	_reconnecting = true;
 	_connectMutex.lock();
-
 	for(int32_t i = 0; i < 5; i++)
 	{
 		try
@@ -987,7 +981,7 @@ void Mqtt::connect()
 				}
 				else
 				{
-					_out.printInfo("MQTT Client Info: Successfully connected to MQTT server using protocol version 3.");
+					_out.printInfo("Info: Successfully connected to MQTT server using protocol version 3.");
 					_connected = true;
 					_connectMutex.unlock();
 					if(_settings.bmxTopic()) {
@@ -1047,9 +1041,6 @@ void Mqtt::disconnect()
 		_out.printEx(__FILE__, __LINE__, __PRETTY_FUNCTION__);
 	}
 }
-
-
-
 
 void Mqtt::queueMessage(std::string topic, std::string& payload)
 {
