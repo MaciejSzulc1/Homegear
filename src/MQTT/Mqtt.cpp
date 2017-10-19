@@ -86,10 +86,6 @@ void Mqtt::start()
 		if(_started) return;
 		_started = true;
 
-
-		GD::out.printInfo(std::string("MQTT Client start v.: ")+__DATE__+"|"+__TIME__);
-		GD::out.printInfo(std::string("MQTT Client using broker: ")+_settings.brokerHostname()+" on port:"+_settings.brokerPort());
-
 		startQueue(0, false, 1, 0, SCHED_OTHER);
 		startQueue(1, false, _settings.processingThreadCount(), 0, SCHED_OTHER);
 
@@ -750,7 +746,6 @@ void Mqtt::send(const std::vector<char>& data)
 	{
 		if(GD::bl->debugLevel >= 4) {
 			_out.printDebug("Debug: Sending (hex): " + BaseLib::HelperFunctions::getHexString(data));
-			_out.printDebug("Debug: Sending (str): " + std::string(data.begin(), data.end()));
 		}
 
 		_socket->proofwrite(data);
@@ -767,7 +762,7 @@ void Mqtt::subscribe(std::string topic)
 {
 	try
 	{
-		if(GD::bl->debugLevel >= 4) GD::out.printInfo("MQTT Client Info: Subscribe topic " + topic);
+		if(GD::bl->debugLevel >= 4) GD::out.printInfo("Info: Subscribing to topic " + topic);
 		std::vector<char> payload;
 		payload.reserve(200);
 		int16_t id = 0;
@@ -851,7 +846,7 @@ void Mqtt::connect()
 {
 	_reconnecting = true;
 	_connectMutex.lock();
-	_out.printInfo("MQTT Client Info: connecting to server as: "+_settings.clientName());
+
 	for(int32_t i = 0; i < 5; i++)
 	{
 		try
@@ -880,6 +875,10 @@ void Mqtt::connect()
 			payload.push_back(0); //Keep alive MSB (in seconds)
 			payload.push_back(0x3C); //Keep alive LSB
 			std::string temp = _settings.clientName();
+			if(_settings.bmxTopic()) {
+				//IBM Bluemix Watson IOT Platform uses different client naming, so we will not use the clientName field.
+				temp="g:"+_settings.bmxOrgId()+":"+_settings.bmxTypeId()+":"+_settings.bmxDeviceId();
+			}
 			if(temp.empty()) temp = "Homegear";
 			payload.push_back(temp.size() >> 8);
 			payload.push_back(temp.size() & 0xFF);
@@ -909,7 +908,7 @@ void Mqtt::connect()
 			bool retry = false;
 			if(response.size() != 4)
 			{
-				if(response.size() == 0) {_out.printError("Error: zero-sized reply from server using v4 protocol.");}
+				if(response.size() == 0) {}
 				else if(response.size() != 4) _out.printError("Error: CONNACK packet has wrong size.");
 				else if(response[0] != 0x20 || response[1] != 0x02 || response[2] != 0) _out.printError("Error: CONNACK has wrong content.");
 				else if(response[3] != 1) printConnectionError(response[3]);
@@ -917,13 +916,14 @@ void Mqtt::connect()
 			}
 			else
 			{
-				_out.printInfo("MQTT Client Info: Successfully connected to MQTT server using protocol version 4.");
+				_out.printInfo("Info: Successfully connected to MQTT server using protocol version 4.");
 				_connected = true;
 				_connectMutex.unlock();
-				if(_settings.bluemixTopic()) {
+				if(_settings.bmxTopic()) {
 					//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
+					//gatway commands
+					subscribe(_settings.prefix()+_settings.bmxTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
                subscribe("iotdm-1/response");
-               subscribe("iotdm-1/#");
             } else {
 				    subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
 				    subscribe(_settings.prefix() + _settings.homegearId() + "/set/#");
@@ -990,10 +990,17 @@ void Mqtt::connect()
 					_out.printInfo("MQTT Client Info: Successfully connected to MQTT server using protocol version 3.");
 					_connected = true;
 					_connectMutex.unlock();
-					subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
-					subscribe(_settings.prefix() + _settings.homegearId() + "/set/#");
-					subscribe(_settings.prefix() + _settings.homegearId() + "/value/#");
-					subscribe(_settings.prefix() + _settings.homegearId() + "/config/#");
+					if(_settings.bmxTopic()) {
+						//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
+						//gatway commands
+						subscribe(_settings.prefix()+_settings.bmxTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+	               subscribe("iotdm-1/response");
+	            } else {
+						subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
+						subscribe(_settings.prefix() + _settings.homegearId() + "/set/#");
+						subscribe(_settings.prefix() + _settings.homegearId() + "/value/#");
+						subscribe(_settings.prefix() + _settings.homegearId() + "/config/#");
+					}
 					_reconnecting = false;
 					return;
 				}
@@ -1047,9 +1054,8 @@ void Mqtt::disconnect()
 void Mqtt::queueMessage(std::string topic, std::string& payload)
 {
 
-	if(_settings.bluemixTopic()) {
-		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (string, string): topic:" + topic + " payload:"+payload);
-	}
+	if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: queueMessage(topic, payload)-> topic:" + topic + " payload:"+payload);
+
 	try
 	{
 		std::shared_ptr<MqttMessage> message = std::make_shared<MqttMessage>();
@@ -1074,46 +1080,58 @@ void Mqtt::queueMessage(std::string topic, std::string& payload)
 void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::string& key, BaseLib::PVariable& value)
 {
 
-	if(_settings.bluemixTopic()) {
-		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (peerId="+std::to_string(peerId)+", channel="+std::to_string(channel)+", key="+key+", value="+value->stringValue);
-	}
+	if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: queueMessage(peerId, channel, key, value) -> peerId="+std::to_string(peerId)+", channel="+std::to_string(channel)+", key="+key+", value="+value->stringValue);
+
 	try
 	{
 		bool retain = key.compare(0, 5, "PRESS") != 0;
 
 		std::shared_ptr<MqttMessage> messageJson1;
-		if(_settings.jsonTopic())
-		{
-			messageJson1.reset(new MqttMessage());
-			messageJson1->topic = "json/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + key;
-			_jsonEncoder->encode(value, messageJson1->message);
-			messageJson1->retain = retain;
-			queueMessage(messageJson1);
-		}
-
-		if(_settings.plainTopic())
-		{
-			std::shared_ptr<MqttMessage> messagePlain(new MqttMessage());
-			messagePlain->topic = "plain/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + key;
-			if(messageJson1) messagePlain->message.insert(messagePlain->message.end(), messageJson1->message.begin() + 1, messageJson1->message.end() - 1);
-			else
-			{
-				_jsonEncoder->encode(value, messagePlain->message);
-				messagePlain->message = std::vector<char>(messagePlain->message.begin() + 1, messagePlain->message.end() - 1);
-			}
-			messagePlain->retain = retain;
-			queueMessage(messagePlain);
-		}
-
-		if(_settings.jsonobjTopic())
-		{
+		if(_settings.bmxTopic()) {
+			//topic has to be set to: id/deviceName/evt/eventName/fmt/json
 			std::shared_ptr<MqttMessage> messageJson2(new MqttMessage());
-			messageJson2->topic = "jsonobj/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + key;
+			messageJson2->topic = "id/" + std::to_string(peerId) + '-' + std::to_string(channel)+"/evt/status/fmt/json";
 			BaseLib::PVariable structValue(new BaseLib::Variable(BaseLib::VariableType::tStruct));
-			structValue->structValue->insert(BaseLib::StructElement("value", value));
+			structValue->structValue->insert(BaseLib::StructElement(key, value));
 			_jsonEncoder->encode(structValue, messageJson2->message);
 			messageJson2->retain = retain;
 			queueMessage(messageJson2);
+
+		} else {
+			//never send different format of message to bluemix IOT platform as it will drop the Connection
+			if(_settings.jsonTopic())
+			{
+				messageJson1.reset(new MqttMessage());
+				messageJson1->topic = "json/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + key;
+				_jsonEncoder->encode(value, messageJson1->message);
+				messageJson1->retain = retain;
+				queueMessage(messageJson1);
+			}
+
+			if(_settings.plainTopic())
+			{
+				std::shared_ptr<MqttMessage> messagePlain(new MqttMessage());
+				messagePlain->topic = "plain/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + key;
+				if(messageJson1) messagePlain->message.insert(messagePlain->message.end(), messageJson1->message.begin() + 1, messageJson1->message.end() - 1);
+				else
+				{
+					_jsonEncoder->encode(value, messagePlain->message);
+					messagePlain->message = std::vector<char>(messagePlain->message.begin() + 1, messagePlain->message.end() - 1);
+				}
+				messagePlain->retain = retain;
+				queueMessage(messagePlain);
+			}
+
+			if(_settings.jsonobjTopic())
+			{
+				std::shared_ptr<MqttMessage> messageJson2(new MqttMessage());
+				messageJson2->topic = "jsonobj/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + key;
+				BaseLib::PVariable structValue(new BaseLib::Variable(BaseLib::VariableType::tStruct));
+				structValue->structValue->insert(BaseLib::StructElement("value", value));
+				_jsonEncoder->encode(structValue, messageJson2->message);
+				messageJson2->retain = retain;
+				queueMessage(messageJson2);
+			}
 		}
 	}
 	catch(const std::exception& ex)
@@ -1132,39 +1150,32 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::string& key, Base
 
 void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::string>& keys, std::vector<BaseLib::PVariable>& values)
 {
-
-	if(_settings.bluemixTopic()) {
-		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage peerId="+std::to_string(peerId)+", channel="+std::to_string(channel)+", keys, values");
-	}
+	if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: queueMessage(peerId, channel, keys, values) -> peerId="+std::to_string(peerId)+", channel="+std::to_string(channel)+", keys, values");
 	try
 	{
 		if(keys.empty() || keys.size() != values.size()) return;
 
 		std::shared_ptr<MqttMessage> messageJson2;
 		BaseLib::PVariable jsonObj;
-		if(_settings.jsonobjTopic())
+		if(_settings.bmxTopic()) {
+			//topic has to be set to: id/deviceName/evt/eventName/fmt/json
+			messageJson2.reset(new MqttMessage());
+			messageJson2->topic = "id/" + std::to_string(peerId) + '-' + std::to_string(channel)+"/evt/status/fmt/json";
+			jsonObj.reset(new BaseLib::Variable(BaseLib::VariableType::tStruct));
+
+		} else if(_settings.jsonobjTopic())
 		{
 			messageJson2.reset(new MqttMessage());
 			messageJson2->topic = "jsonobj/" + std::to_string(peerId) + '/' + std::to_string(channel);
 			jsonObj.reset(new BaseLib::Variable(BaseLib::VariableType::tStruct));
 		}
 
-		if(_settings.bluemixTopic()) {
-			//format for IBM Bluemix topic in gateway mode is:
-			//iot-2/type/mydevice/id/device1/evt/status/fmt/json
-			//topic have to be set to: id/deviceName/evt/eventName/fmt/json
-			messageJson2.reset(new MqttMessage());
-			messageJson2->topic = "id/" + std::to_string(peerId) + '-' + std::to_string(channel)+"/evt/status/fmt/json";
-			jsonObj.reset(new BaseLib::Variable(BaseLib::VariableType::tStruct));
-		}
-
-
 		for(int32_t i = 0; i < (signed)keys.size(); i++)
 		{
 			bool retain = keys.at(i).compare(0, 5, "PRESS") != 0;
 
 			std::shared_ptr<MqttMessage> messageJson1;
-			if(_settings.bluemixTopic()) {
+			if(_settings.bmxTopic()) {
 				jsonObj->structValue->insert(BaseLib::StructElement(keys.at(i), values.at(i)));
 				if(!retain) messageJson2->retain = false;
 
@@ -1202,7 +1213,7 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::strin
 			}
 		}
 
-		if(_settings.jsonobjTopic()||_settings.bluemixTopic())
+		if(_settings.jsonobjTopic()||_settings.bmxTopic())
 		{
 			_jsonEncoder->encode(jsonObj, messageJson2->message);
 			queueMessage(messageJson2);
@@ -1224,9 +1235,7 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::strin
 
 void Mqtt::queueMessage(std::shared_ptr<MqttMessage>& message)
 {
-	if(_settings.bluemixTopic()) {
-		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (message) topic: "+message->topic+" message:"+ std::string(message->message.begin(), message->message.end()));
-	}
+	if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (message) topic: "+message->topic+" message:"+ std::string(message->message.begin(), message->message.end()));
 	try
 	{
 		if(!_started || !message) return;
@@ -1249,20 +1258,6 @@ void Mqtt::queueMessage(std::shared_ptr<MqttMessage>& message)
 
 void Mqtt::publish(const std::string& topic, const std::vector<char>& data, bool retain)
 {
-
-// Format:
-// Fixed header
-// b1: type: 4b, val=3; DUP: 1b, QoS: 2B, Retail 1B
-// b2: remaining lengthBytes
-// ----------
-// Variable header
-// b3: MSB od dlogosci tematu
-// b4: LSB dlugosci tematu
-// b5... temat
-// bn+1 mesaage ID MSB
-// bn+2 message ID LSB
-// bn+3.... payload
-
 try
 {
 	if(data.empty() || !_started) return;
@@ -1271,19 +1266,14 @@ try
 	std::vector<char> payload;
 	std::string fullTopic;
 
-	//Bufor na dodanie identyfikatora obiektu
-	if(_settings.bluemixTopic()) {
-		//format for IBM Bluemix topic in gateway mode is:
-		//iot-2/type/mydevice/id/device1/evt/status/fmt/json
-		//prefix=/iot-2/type/, homegearID=mydevice
-		// whole prefix is: /iot-2/type/homegearID/
-		//topic=id/deviceName/evt/eventName/fmt/json
-
+	if(_settings.bmxTopic()) {
+		//format for IBM Bluemix topic in gateway mode is: iot-2/type/mydevice/id/device1/evt/status/fmt/json
+		//topic we got from queue=id/deviceName/evt/eventName/fmt/json
 		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
-		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
+		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + varheader (2) + topic + payload.
 	} else {
 		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
-		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
+		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + varheader (2) + topic + payload.
 	}
 
 	payload.push_back(fullTopic.size() >> 8);

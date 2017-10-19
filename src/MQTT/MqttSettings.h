@@ -55,11 +55,15 @@ public:
 	std::string homegearId() { return _homegearId; }
 	std::string username() { return _username; }
 	std::string password() { return _password; }
+	std::string bmxOrgId() { return _bmxOrgId; }
+	std::string bmxTypeId() { return _bmxTypeId; }
+	std::string bmxDeviceId() { return _bmxDeviceId; }
+
 	bool retain() { return _retain; }
 	bool plainTopic() { return _plainTopic; }
 	bool jsonTopic() { return _jsonTopic; }
 	bool jsonobjTopic() { return _jsonobjTopic; }
-	bool bluemixTopic() { return _jsonobjTopic; }
+	bool bmxTopic() { return _bmxTopic; }
 	bool enableSSL() { return _enableSSL; }
 	std::string caFile() { return _caFile; }
 	bool verifyCertificate() { return _verifyCertificate; }
@@ -75,11 +79,14 @@ private:
 	std::string _homegearId;
 	std::string _username;
 	std::string _password;
+	std::string _bmxOrgId;
+	std::string _bmxTypeId;
+	std::string _bmxDeviceId;
 	bool _retain = true;
 	bool _plainTopic = true;
 	bool _jsonTopic = true;
 	bool _jsonobjTopic = true;
-	bool _bluemixTopic = true;
+	bool _bmxTopic = true;
 	bool _enableSSL = false;
 	std::string _caFile;
 	bool _verifyCertificate = true;

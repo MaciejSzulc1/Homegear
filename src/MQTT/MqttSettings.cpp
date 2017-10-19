@@ -136,6 +136,21 @@ void MqttSettings::load(std::string filename)
 					}
 					GD::bl->out.printDebug("Debug (MQTT settings): homegearId set to " + _homegearId);
 				}
+				else if(name == "bmxorgid")
+				{
+					_bmxOrgId = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxOrgId set to " + _bmxOrgId);
+				}
+				else if(name == "bmxtypeid")
+				{
+					_bmxTypeId = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxTypeId set to " + _bmxTypeId);
+				}
+				else if(name == "bmxdeviceid")
+				{
+					_bmxDeviceId = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxDeviceId set to " + _bmxDeviceId);
+				}
 				else if(name == "username")
 				{
 					_username = value;
@@ -166,10 +181,13 @@ void MqttSettings::load(std::string filename)
 					_jsonobjTopic = (BaseLib::HelperFunctions::toLower(value) == "true");
 					GD::bl->out.printDebug("Debug (MQTT settings): jsonobjTopic set to " + std::to_string(_jsonobjTopic));
 				}
-				else if(name == "bluemixtopic")
+				else if(name == "bmxtopic")
 				{
-					_jsonobjTopic = (BaseLib::HelperFunctions::toLower(value) == "true");
-					GD::bl->out.printDebug("Debug (MQTT settings): bluemixTopic set to " + std::to_string(_bluemixTopic));
+					_bmxTopic = (BaseLib::HelperFunctions::toLower(value) == "true");
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxTopic set to " + std::to_string(_bmxTopic));
+					if (_bmxTopic) {
+						GD::bl->out.printWarning("Warning (MQTT settings): bmxTopic is enabled, so all other topics will be blocked.");
+					}
 				}
 				else if(name == "enablessl")
 				{
