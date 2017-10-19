@@ -840,8 +840,6 @@ void Mqtt::reconnect()
 
 void Mqtt::connect()
 {
-   bool isBluemix=true;
-
 	_reconnecting = true;
 	_connectMutex.lock();
 	for(int32_t i = 0; i < 5; i++)
@@ -912,7 +910,8 @@ void Mqtt::connect()
 				_out.printInfo("MQTT Client Info: Successfully connected to MQTT server using protocol version 4.");
 				_connected = true;
 				_connectMutex.unlock();
-            if (isBluemix) {
+				if(_settings.bluemixTopic()) {
+					//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
                subscribe("iotdm-1/response");
                subscribe("iotdm-1/#");
             } else {
@@ -1037,8 +1036,8 @@ void Mqtt::disconnect()
 
 void Mqtt::queueMessage(std::string topic, std::string& payload)
 {
-	bool isBluemix=true;
-	if (isBluemix) {
+
+	if(_settings.bluemixTopic()) {
 		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (string, string): topic:" + topic + " payload:"+payload);
 	}
 	try
@@ -1064,8 +1063,8 @@ void Mqtt::queueMessage(std::string topic, std::string& payload)
 
 void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::string& key, BaseLib::PVariable& value)
 {
-	bool isBluemix=true;
-	if (isBluemix) {
+
+	if(_settings.bluemixTopic()) {
 		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (peerId="+std::to_string(peerId)+", channel="+std::to_string(channel)+", key="+key+", value="+value->stringValue);
 	}
 	try
@@ -1123,9 +1122,8 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::string& key, Base
 
 void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::string>& keys, std::vector<BaseLib::PVariable>& values)
 {
-	bool isBluemix=true;
 
-	if (isBluemix) {
+	if(_settings.bluemixTopic()) {
 		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage peerId="+std::to_string(peerId)+", channel="+std::to_string(channel)+", keys, values");
 	}
 	try
@@ -1141,43 +1139,60 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::strin
 			jsonObj.reset(new BaseLib::Variable(BaseLib::VariableType::tStruct));
 		}
 
+		if(_settings.bluemixTopic()) {
+			//format for IBM Bluemix topic in gateway mode is:
+			//iot-2/type/mydevice/id/device1/evt/status/fmt/json
+			//topic have to be set to: id/deviceName/evt/eventName/fmt/json
+			messageJson2.reset(new MqttMessage());
+			messageJson2->topic = "id/" + std::to_string(peerId) + '-' + std::to_string(channel)+"/evt/status/fmt/json";
+			jsonObj.reset(new BaseLib::Variable(BaseLib::VariableType::tStruct));
+		}
+
+
 		for(int32_t i = 0; i < (signed)keys.size(); i++)
 		{
 			bool retain = keys.at(i).compare(0, 5, "PRESS") != 0;
 
 			std::shared_ptr<MqttMessage> messageJson1;
-			
-			if(_settings.jsonTopic())
-			{
-				messageJson1.reset(new MqttMessage());
-				messageJson1->topic = "json/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + keys.at(i);
-				_jsonEncoder->encode(values.at(i), messageJson1->message);
-				messageJson1->retain = retain;
-				queueMessage(messageJson1);
-			}
-
-			if(_settings.plainTopic())
-			{
-				std::shared_ptr<MqttMessage> messagePlain(new MqttMessage());
-				messagePlain->topic = "plain/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + keys.at(i);
-				if(messageJson1) messagePlain->message.insert(messagePlain->message.end(), messageJson1->message.begin() + 1, messageJson1->message.end() - 1);
-				else
-				{
-					_jsonEncoder->encode(values.at(i), messagePlain->message);
-					messagePlain->message = std::vector<char>(messagePlain->message.begin() + 1, messagePlain->message.end() - 1);
-				}
-				messagePlain->retain = retain;
-				queueMessage(messagePlain);
-			}
-
-			if(_settings.jsonobjTopic())
-			{
+			if(_settings.bluemixTopic()) {
 				jsonObj->structValue->insert(BaseLib::StructElement(keys.at(i), values.at(i)));
 				if(!retain) messageJson2->retain = false;
+
+			} else {
+				//never send different format of message to bluemix IOT platform as it will drop the Connection
+				//if we are using bluemix formatting we have to disable all other data formatting
+				if(_settings.jsonTopic())
+				{
+					messageJson1.reset(new MqttMessage());
+					messageJson1->topic = "json/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + keys.at(i);
+					_jsonEncoder->encode(values.at(i), messageJson1->message);
+					messageJson1->retain = retain;
+					queueMessage(messageJson1);
+				}
+
+				if(_settings.plainTopic())
+				{
+					std::shared_ptr<MqttMessage> messagePlain(new MqttMessage());
+					messagePlain->topic = "plain/" + std::to_string(peerId) + '/' + std::to_string(channel) + '/' + keys.at(i);
+					if(messageJson1) messagePlain->message.insert(messagePlain->message.end(), messageJson1->message.begin() + 1, messageJson1->message.end() - 1);
+					else
+					{
+						_jsonEncoder->encode(values.at(i), messagePlain->message);
+						messagePlain->message = std::vector<char>(messagePlain->message.begin() + 1, messagePlain->message.end() - 1);
+					}
+					messagePlain->retain = retain;
+					queueMessage(messagePlain);
+				}
+
+				if(_settings.jsonobjTopic())
+				{
+					jsonObj->structValue->insert(BaseLib::StructElement(keys.at(i), values.at(i)));
+					if(!retain) messageJson2->retain = false;
+				}
 			}
 		}
 
-		if(_settings.jsonobjTopic())
+		if(_settings.jsonobjTopic()||_settings.bluemixTopic())
 		{
 			_jsonEncoder->encode(jsonObj, messageJson2->message);
 			queueMessage(messageJson2);
@@ -1199,11 +1214,8 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::strin
 
 void Mqtt::queueMessage(std::shared_ptr<MqttMessage>& message)
 {
-	bool isBluemix=true;
-	if (isBluemix) {
+	if(_settings.bluemixTopic()) {
 		if(GD::bl->debugLevel >= 4) _out.printDebug("Debug: queueMessage (message) topic: "+message->topic+" message:"+ std::string(message->message.begin(), message->message.end()));
-
-
 	}
 	try
 	{
@@ -1227,7 +1239,6 @@ void Mqtt::queueMessage(std::shared_ptr<MqttMessage>& message)
 
 void Mqtt::publish(const std::string& topic, const std::vector<char>& data, bool retain)
 {
-	bool isBluemix=true;
 
 // Format:
 // Fixed header
@@ -1251,7 +1262,13 @@ try
 	std::string fullTopic;
 
 	//Bufor na dodanie identyfikatora obiektu
-	if (isBluemix) {
+	if(_settings.bluemixTopic()) {
+		//format for IBM Bluemix topic in gateway mode is:
+		//iot-2/type/mydevice/id/device1/evt/status/fmt/json
+		//prefix=/iot-2/type/, homegearID=mydevice
+		// whole prefix is: /iot-2/type/homegearID/
+		//topic=id/deviceName/evt/eventName/fmt/json
+
 		fullTopic = _settings.prefix();
 		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
 	} else {
@@ -1269,13 +1286,8 @@ try
 
 	std::vector<char> lengthBytes;
 
-	if (isBluemix) {
-		payload.insert(payload.end(), data.begin(), data.end());
-		lengthBytes = getLengthBytes(payload.size());
-	} else {
-		payload.insert(payload.end(), data.begin(), data.end());
-		lengthBytes = getLengthBytes(payload.size());
-	}
+	payload.insert(payload.end(), data.begin(), data.end());
+	lengthBytes = getLengthBytes(payload.size());
 
 	packet.reserve(1 + lengthBytes.size() + payload.size());
 	retain && _settings.retain() ? packet.push_back(0x33) : packet.push_back(0x32);
