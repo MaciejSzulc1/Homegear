@@ -1269,7 +1269,7 @@ try
 		// whole prefix is: /iot-2/type/homegearID/
 		//topic=id/deviceName/evt/eventName/fmt/json
 
-		fullTopic = _settings.prefix();
+		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
 		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + dlugosc varheader (2) + topic + payload.
 	} else {
 		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
