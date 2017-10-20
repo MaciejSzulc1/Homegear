@@ -783,6 +783,10 @@ void Mqtt::subscribe(std::string topic)
 				if(response.size() == 0 || (response.at(4) != 0 && response.at(4) != 1))
 				{
 					//Ignore => mosquitto does not send SUBACK
+					if(_settings.bmxTopic()) {
+						//co to znaczy spreawdz w specyfikacji protokołu
+						_out.printError("Error: subscribe request failed for: " + topic);
+					}
 				}
 				else break;
 			}
@@ -938,7 +942,7 @@ void Mqtt::connect()
 				if(_settings.bmxTopic()) {
 					//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
 					//gatway commands
-					subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+					//subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
                subscribe("iotdm-1/response");
             } else {
 				    subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
@@ -1035,7 +1039,7 @@ void Mqtt::connect()
 					if(_settings.bmxTopic()) {
 						//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
 						//gatway commands
-						subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+						//subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
 	               subscribe("iotdm-1/response");
 	            } else {
 						subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
