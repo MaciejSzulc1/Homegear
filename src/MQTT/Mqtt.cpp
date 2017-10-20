@@ -864,8 +864,13 @@ void Mqtt::connect()
 			payload.push_back('T');
 			payload.push_back(4); //Protocol level
 			payload.push_back(2); //Connect flags (Clean session)
-			if(!_settings.username().empty()) payload.at(7) |= 0x80;
-			if(!_settings.password().empty()) payload.at(7) |= 0x40;
+			if(_settings.bmxTopic()) {
+				if(!_settings.bmxUsername().empty()) payload.at(7) |= 0x80;
+				if(!_settings.bmxToken().empty()) payload.at(7) |= 0x40;
+			} else {
+				if(!_settings.username().empty()) payload.at(7) |= 0x80;
+				if(!_settings.password().empty()) payload.at(7) |= 0x40;
+			}
 			payload.push_back(0); //Keep alive MSB (in seconds)
 			payload.push_back(0x3C); //Keep alive LSB
 			std::string temp = _settings.clientName();
@@ -877,19 +882,36 @@ void Mqtt::connect()
 			payload.push_back(temp.size() >> 8);
 			payload.push_back(temp.size() & 0xFF);
 			payload.insert(payload.end(), temp.begin(), temp.end());
-			if(!_settings.username().empty())
-			{
-				temp = _settings.username();
-				payload.push_back(temp.size() >> 8);
-				payload.push_back(temp.size() & 0xFF);
-				payload.insert(payload.end(), temp.begin(), temp.end());
-			}
-			if(!_settings.password().empty())
-			{
-				temp = _settings.password();
-				payload.push_back(temp.size() >> 8);
-				payload.push_back(temp.size() & 0xFF);
-				payload.insert(payload.end(), temp.begin(), temp.end());
+			if(_settings.bmxTopic()) {
+				if(!_settings.bmxUsername().empty())
+				{
+					temp = _settings.bmxUsername();
+					payload.push_back(temp.size() >> 8);
+					payload.push_back(temp.size() & 0xFF);
+					payload.insert(payload.end(), temp.begin(), temp.end());
+				}
+				if(!_settings.bmxToken().empty())
+				{
+					temp = _settings.bmxToken();
+					payload.push_back(temp.size() >> 8);
+					payload.push_back(temp.size() & 0xFF);
+					payload.insert(payload.end(), temp.begin(), temp.end());
+				}
+			} else {
+				if(!_settings.username().empty())
+				{
+					temp = _settings.username();
+					payload.push_back(temp.size() >> 8);
+					payload.push_back(temp.size() & 0xFF);
+					payload.insert(payload.end(), temp.begin(), temp.end());
+				}
+				if(!_settings.password().empty())
+				{
+					temp = _settings.password();
+					payload.push_back(temp.size() >> 8);
+					payload.push_back(temp.size() & 0xFF);
+					payload.insert(payload.end(), temp.begin(), temp.end());
+				}
 			}
 			std::vector<char> lengthBytes = getLengthBytes(payload.size());
 			std::vector<char> connectPacket;
@@ -916,7 +938,7 @@ void Mqtt::connect()
 				if(_settings.bmxTopic()) {
 					//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
 					//gatway commands
-					subscribe(_settings.prefix()+_settings.bmxTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+					subscribe(_settings.bmxPrefix()+_settings.bmxTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
                subscribe("iotdm-1/response");
             } else {
 				    subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
@@ -942,28 +964,54 @@ void Mqtt::connect()
 				payload.push_back('p');
 				payload.push_back(3); //Protocol level
 				payload.push_back(2); //Connect flags (Clean session)
-				if(!_settings.username().empty()) payload.at(7) |= 0x80;
-				if(!_settings.password().empty()) payload.at(7) |= 0x40;
+				if(_settings.bmxTopic()) {
+					if(!_settings.bmxUsername().empty()) payload.at(7) |= 0x80;
+					if(!_settings.bmxToken().empty()) payload.at(7) |= 0x40;
+				} else {
+					if(!_settings.username().empty()) payload.at(7) |= 0x80;
+					if(!_settings.password().empty()) payload.at(7) |= 0x40;
+				}
 				payload.push_back(0); //Keep alive MSB (in seconds)
 				payload.push_back(0x3C); //Keep alive LSB
 				temp = _settings.clientName();
+				if(_settings.bmxTopic()) {
+					//IBM Bluemix Watson IOT Platform uses different client naming, so we will not use the clientName field.
+					temp="g:"+_settings.bmxOrgId()+":"+_settings.bmxTypeId()+":"+_settings.bmxDeviceId();
+				}
 				if(temp.empty()) temp = "Homegear";
 				payload.push_back(temp.size() >> 8);
 				payload.push_back(temp.size() & 0xFF);
 				payload.insert(payload.end(), temp.begin(), temp.end());
+				if(_settings.bmxTopic()) {
+					if(!_settings.bmxUsername().empty())
+					{
+						temp = _settings.bmxUsername();
+						payload.push_back(temp.size() >> 8);
+						payload.push_back(temp.size() & 0xFF);
+						payload.insert(payload.end(), temp.begin(), temp.end());
+					}
+					if(!_settings.bmxToken().empty())
+					{
+						temp = _settings.bmxToken();
+						payload.push_back(temp.size() >> 8);
+						payload.push_back(temp.size() & 0xFF);
+						payload.insert(payload.end(), temp.begin(), temp.end());
+					}
+				} else {
 				if(!_settings.username().empty())
-				{
-					temp = _settings.username();
-					payload.push_back(temp.size() >> 8);
-					payload.push_back(temp.size() & 0xFF);
-					payload.insert(payload.end(), temp.begin(), temp.end());
-				}
+					{
+						temp = _settings.username();
+						payload.push_back(temp.size() >> 8);
+						payload.push_back(temp.size() & 0xFF);
+						payload.insert(payload.end(), temp.begin(), temp.end());
+					}
 				if(!_settings.password().empty())
-				{
-					temp = _settings.password();
-					payload.push_back(temp.size() >> 8);
-					payload.push_back(temp.size() & 0xFF);
-					payload.insert(payload.end(), temp.begin(), temp.end());
+					{
+						temp = _settings.password();
+						payload.push_back(temp.size() >> 8);
+						payload.push_back(temp.size() & 0xFF);
+						payload.insert(payload.end(), temp.begin(), temp.end());
+					}
 				}
 				std::vector<char> lengthBytes = getLengthBytes(payload.size());
 				std::vector<char> connectPacket;
@@ -987,7 +1035,7 @@ void Mqtt::connect()
 					if(_settings.bmxTopic()) {
 						//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
 						//gatway commands
-						subscribe(_settings.prefix()+_settings.bmxTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+						subscribe(_settings.bmxPrefix()+_settings.bmxTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
 	               subscribe("iotdm-1/response");
 	            } else {
 						subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
@@ -1259,8 +1307,8 @@ try
 
 	if(_settings.bmxTopic()) {
 		//format for IBM Bluemix topic in gateway mode is: iot-2/type/mydevice/id/device1/evt/status/fmt/json
-		//topic we got from queue=id/deviceName/evt/eventName/fmt/json
-		fullTopic = _settings.prefix() + _settings.bmxTypeId() + "/" + topic;
+		//format of topic received by method is 'id/deviceName/evt/eventName/fmt/json'
+		fullTopic = _settings.bmxPrefix() + _settings.bmxTypeId() + "/" + topic;
 		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + varheader (2) + topic + payload.
 	} else {
 		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;

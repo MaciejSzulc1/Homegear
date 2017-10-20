@@ -55,9 +55,12 @@ public:
 	std::string homegearId() { return _homegearId; }
 	std::string username() { return _username; }
 	std::string password() { return _password; }
+	std::string bmxPrefix() { return _bmxPrefix; }
 	std::string bmxOrgId() { return _bmxOrgId; }
 	std::string bmxTypeId() { return _bmxTypeId; }
 	std::string bmxDeviceId() { return _bmxDeviceId; }
+	std::string bmxUsername() { return _bmxUsername; }
+	std::string bmxToken() { return _bmxToken; }
 
 	bool retain() { return _retain; }
 	bool plainTopic() { return _plainTopic; }
@@ -79,9 +82,12 @@ private:
 	std::string _homegearId;
 	std::string _username;
 	std::string _password;
+	std::string _bmxPrefix;
 	std::string _bmxOrgId;
 	std::string _bmxTypeId;
 	std::string _bmxDeviceId;
+	std::string _bmxUsername;
+	std::string _bmxToken;
 	bool _retain = true;
 	bool _plainTopic = true;
 	bool _jsonTopic = true;

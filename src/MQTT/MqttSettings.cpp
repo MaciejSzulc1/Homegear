@@ -136,21 +136,6 @@ void MqttSettings::load(std::string filename)
 					}
 					GD::bl->out.printDebug("Debug (MQTT settings): homegearId set to " + _homegearId);
 				}
-				else if(name == "bmxorgid")
-				{
-					_bmxOrgId = value;
-					GD::bl->out.printDebug("Debug (MQTT settings): bmxOrgId set to " + _bmxOrgId);
-				}
-				else if(name == "bmxtypeid")
-				{
-					_bmxTypeId = value;
-					GD::bl->out.printDebug("Debug (MQTT settings): bmxTypeId set to " + _bmxTypeId);
-				}
-				else if(name == "bmxdeviceid")
-				{
-					_bmxDeviceId = value;
-					GD::bl->out.printDebug("Debug (MQTT settings): bmxDeviceId set to " + _bmxDeviceId);
-				}
 				else if(name == "username")
 				{
 					_username = value;
@@ -188,6 +173,38 @@ void MqttSettings::load(std::string filename)
 					if (_bmxTopic) {
 						GD::bl->out.printWarning("Warning (MQTT settings): bmxTopic is enabled, so all other topics will be blocked.");
 					}
+				}
+				else if(name == "bmxprefix")
+				{
+					_bmxPrefix = value;
+					if(!_bmxPrefix.empty() && _bmxPrefix.back() != '/') _bmxPrefix.push_back('/');
+					if(_bmxPrefix == "/") _bmxPrefix = "";
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxPrefix set to " + _bmxPrefix);
+				}
+				else if(name == "bmxorgid")
+				{
+					_bmxOrgId = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxOrgId set to " + _bmxOrgId);
+				}
+				else if(name == "bmxtypeid")
+				{
+					_bmxTypeId = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxTypeId set to " + _bmxTypeId);
+				}
+				else if(name == "bmxdeviceid")
+				{
+					_bmxDeviceId = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxDeviceId set to " + _bmxDeviceId);
+				}
+				else if(name == "bmxusername")
+				{
+					_bmxUsername = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxUsername set to " + _bmxUsername);
+				}
+				else if(name == "bmxtoken")
+				{
+					_bmxToken = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxToken set to " + _bmxToken );
 				}
 				else if(name == "enablessl")
 				{
