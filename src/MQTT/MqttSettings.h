@@ -57,7 +57,8 @@ public:
 	std::string password() { return _password; }
 	std::string bmxPrefix() { return _bmxPrefix; }
 	std::string bmxOrgId() { return _bmxOrgId; }
-	std::string bmxTypeId() { return _bmxTypeId; }
+	std::string bmxDevTypeId() { return _bmxDevTypeId; }
+	std::string bmxGwTypeId() { return _bmxGwTypeId; }
 	std::string bmxDeviceId() { return _bmxDeviceId; }
 	std::string bmxUsername() { return _bmxUsername; }
 	std::string bmxToken() { return _bmxToken; }
@@ -84,7 +85,8 @@ private:
 	std::string _password;
 	std::string _bmxPrefix;
 	std::string _bmxOrgId;
-	std::string _bmxTypeId;
+	std::string _bmxDevTypeId;
+	std::string _bmxGwTypeId;
 	std::string _bmxDeviceId;
 	std::string _bmxUsername;
 	std::string _bmxToken;

@@ -186,10 +186,15 @@ void MqttSettings::load(std::string filename)
 					_bmxOrgId = value;
 					GD::bl->out.printDebug("Debug (MQTT settings): bmxOrgId set to " + _bmxOrgId);
 				}
-				else if(name == "bmxtypeid")
+				else if(name == "bmxdevtypeid")
 				{
-					_bmxTypeId = value;
-					GD::bl->out.printDebug("Debug (MQTT settings): bmxTypeId set to " + _bmxTypeId);
+					_bmxDevTypeId = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxDevTypeId set to " + _bmxDevTypeId);
+				}
+				else if(name == "bmxgwtypeid")
+				{
+					_bmxGwTypeId = value;
+					GD::bl->out.printDebug("Debug (MQTT settings): bmxGwTypeId set to " + _bmxGwTypeId);
 				}
 				else if(name == "bmxdeviceid")
 				{

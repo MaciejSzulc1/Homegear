@@ -876,7 +876,7 @@ void Mqtt::connect()
 			std::string temp = _settings.clientName();
 			if(_settings.bmxTopic()) {
 				//IBM Bluemix Watson IOT Platform uses different client naming, so we will not use the clientName field.
-				temp="g:"+_settings.bmxOrgId()+":"+_settings.bmxTypeId()+":"+_settings.bmxDeviceId();
+				temp="g:"+_settings.bmxOrgId()+":"+_settings.bmxGwTypeId()+":"+_settings.bmxDeviceId();
 			}
 			if(temp.empty()) temp = "Homegear";
 			payload.push_back(temp.size() >> 8);
@@ -938,7 +938,7 @@ void Mqtt::connect()
 				if(_settings.bmxTopic()) {
 					//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
 					//gatway commands
-					subscribe(_settings.bmxPrefix()+_settings.bmxTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+					subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
                subscribe("iotdm-1/response");
             } else {
 				    subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
@@ -976,7 +976,7 @@ void Mqtt::connect()
 				temp = _settings.clientName();
 				if(_settings.bmxTopic()) {
 					//IBM Bluemix Watson IOT Platform uses different client naming, so we will not use the clientName field.
-					temp="g:"+_settings.bmxOrgId()+":"+_settings.bmxTypeId()+":"+_settings.bmxDeviceId();
+					temp="g:"+_settings.bmxOrgId()+":"+_settings.bmxGwTypeId()+":"+_settings.bmxDeviceId();
 				}
 				if(temp.empty()) temp = "Homegear";
 				payload.push_back(temp.size() >> 8);
@@ -1035,7 +1035,7 @@ void Mqtt::connect()
 					if(_settings.bmxTopic()) {
 						//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
 						//gatway commands
-						subscribe(_settings.bmxPrefix()+_settings.bmxTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+						subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
 	               subscribe("iotdm-1/response");
 	            } else {
 						subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
@@ -1308,7 +1308,7 @@ try
 	if(_settings.bmxTopic()) {
 		//format for IBM Bluemix topic in gateway mode is: iot-2/type/mydevice/id/device1/evt/status/fmt/json
 		//format of topic received by method is 'id/deviceName/evt/eventName/fmt/json'
-		fullTopic = _settings.bmxPrefix() + _settings.bmxTypeId() + "/" + topic;
+		fullTopic = _settings.bmxPrefix() + _settings.bmxDevTypeId() + "/" + topic;
 		payload.reserve(fullTopic.size() + 2 + 2 + data.size());  // fixed header (2) + varheader (2) + topic + payload.
 	} else {
 		fullTopic = _settings.prefix() + _settings.homegearId() + "/" + topic;
