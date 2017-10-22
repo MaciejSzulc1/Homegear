@@ -780,12 +780,15 @@ void Mqtt::subscribe(std::string topic)
 			{
 				std::vector<char> response;
 				getResponse(subscribePacket, response, 0x90, id, false);
-				if(response.size() == 0 || (response.at(4) != 0 && response.at(4) != 1))
+				if(response.size() == 0 || (response.at(4) != 0 && response.at(4) != 1 && response.at(4) != 2))
 				{
 					//Ignore => mosquitto does not send SUBACK
 					if(_settings.bmxTopic()) {
-						//co to znaczy spreawdz w specyfikacji protokołu
-						_out.printError("Error: subscribe request failed for: " + topic);
+						//IBM Bluemix sends SUBACK, so we need to check if SUB failed
+						if (response.at(4)==0x80)  //Failure
+						{
+							_out.printError("Error: subscribe request failed for: " + topic);
+						}
 					}
 				}
 				else break;
@@ -1039,7 +1042,7 @@ void Mqtt::connect()
 					if(_settings.bmxTopic()) {
 						//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
 						//gatway commands
-						//subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+						subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
 	               subscribe("iotdm-1/response");
 	            } else {
 						subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
