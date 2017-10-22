@@ -1135,7 +1135,7 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::string& key, Base
 		if(_settings.bmxTopic()) {
 			//topic has to be set to: id/deviceName/evt/eventName/fmt/json
 			std::shared_ptr<MqttMessage> messageJson2(new MqttMessage());
-			messageJson2->topic = "id/" + std::to_string(peerId) + '-' + std::to_string(channel)+"/evt/status/fmt/json";
+			messageJson2->topic = "id/" + std::to_string(peerId) + "/evt/ch-" + std::to_string(channel)+"/fmt/json";
 			BaseLib::PVariable structValue(new BaseLib::Variable(BaseLib::VariableType::tStruct));
 			structValue->structValue->insert(BaseLib::StructElement(key, value));
 			_jsonEncoder->encode(structValue, messageJson2->message);
@@ -1205,7 +1205,7 @@ void Mqtt::queueMessage(uint64_t peerId, int32_t channel, std::vector<std::strin
 		if(_settings.bmxTopic()) {
 			//topic has to be set to: id/deviceName/evt/eventName/fmt/json
 			messageJson2.reset(new MqttMessage());
-			messageJson2->topic = "id/" + std::to_string(peerId) + '-' + std::to_string(channel)+"/evt/status/fmt/json";
+			messageJson2->topic = "id/" + std::to_string(peerId) + "/evt/ch-" + std::to_string(channel)+"/fmt/json";
 			jsonObj.reset(new BaseLib::Variable(BaseLib::VariableType::tStruct));
 
 		} else if(_settings.jsonobjTopic())
