@@ -314,14 +314,14 @@ void Mqtt::ping()
 {
 	try
 	{
-		std::vector<char> ping { (char)0xC0, 0 };
+		std::vector<char> ping { (char)MQTT_PACKET_PINGREQ, 0 };
 		std::vector<char> pong(5);
 		int32_t i = 0;
 		while(_started)
 		{
 			if(_connected)
 			{
-				getResponseByType(ping, pong, 0xD0, false);
+				getResponseByType(ping, pong, MQTT_PACKET_PINGRESP, false);
 				if(pong.empty())
 				{
 					_out.printError("Error: No PINGRESP received.");
@@ -466,22 +466,22 @@ void Mqtt::processData(std::vector<char>& data)
 	{
 		int16_t id = 0;
 		uint8_t type = 0;
-		if(data.size() == 2 && data.at(0) == (char)0xD0 && data.at(1) == 0)
+		if(data.size() == 2 && data.at(0) == (char)MQTT_PACKET_PINGRESP && data.at(1) == 0)
 		{
 			if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Received ping response.");
-			type = 0xD0;
+			type = MQTT_PACKET_PINGRESP;
 		}
-		else if(data.size() == 4 && data[0] == 0x20 && data[1] == 2 && data[2] == 0 && data[3] == 0) //CONNACK
+		else if(data.size() == 4 && data[0] == MQTT_PACKET_CONNACK && data[1] == 2 && data[2] == 0 && data[3] == 0) //CONNACK
 		{
 			if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Received CONNACK.");
-			type = 0x20;
+			type = MQTT_PACKET_CONNACK;
 		}
-		else if(data.size() == 4 && data[0] == 0x40 && data[1] == 2) //PUBACK
+		else if(data.size() == 4 && data[0] == MQTT_PACKET_PUBACK && data[1] == 2) //PUBACK
 		{
 			if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Received PUBACK.");
 			id = (((uint16_t)data[2]) << 8) + (uint8_t)data[3];
 		}
-		else if(data.size() == 5 && data[0] == (char)0x90 && data[1] == 3) //SUBACK
+		else if(data.size() == 5 && data[0] == (char)MQTT_PACKET_SUBACK && data[1] == 3) //SUBACK
 		{
 			if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Received SUBACK.");
 			id = (((uint16_t)data[2]) << 8) + (uint8_t)data[3];
@@ -525,7 +525,7 @@ void Mqtt::processData(std::vector<char>& data)
 			}
 			else _requestsMutex.unlock();
 		}
-		if(data.size() > 4 && (data[0] & 0xF0) == 0x30) //PUBLISH
+		if(data.size() > 4 && (data[0] & 0xF0) == MQTT_PACKET_PUBLISH) //PUBLISH
 		{
 			std::shared_ptr<BaseLib::IQueueEntry> entry(new QueueEntryReceived(data));
 			if(!enqueue(1, entry)) printQueueFullError(_out, "Error: Too many received packets are queued to be processed. Your packet processing is too slow. Dropping packet.");
@@ -570,7 +570,7 @@ void Mqtt::processPublish(std::vector<char>& data)
 		}
 		else if(qos == 2)
 		{
-			std::vector<char> puback { 0x40, 2, data[topicLength], data[topicLength + 1] };
+			std::vector<char> puback { MQTT_PACKET_PUBACK, 2, data[topicLength], data[topicLength + 1] };
 			send(puback);
 		}
 		std::string topic(&data[1 + lengthBytes + 2], topicLength - (1 + lengthBytes + 2));
@@ -742,7 +742,6 @@ void Mqtt::send(const std::vector<char>& data)
 	try
 	{
 		if(GD::bl->debugLevel >= 5) _out.printDebug("Debug: Sending: " + BaseLib::HelperFunctions::getHexString(data));
-
 		_socket->proofwrite(data);
 	}
 	catch(BaseLib::SocketClosedException&)
@@ -771,7 +770,7 @@ void Mqtt::subscribe(std::string topic)
 		std::vector<char> lengthBytes = getLengthBytes(payload.size());
 		std::vector<char> subscribePacket;
 		subscribePacket.reserve(1 + lengthBytes.size() + payload.size());
-		subscribePacket.push_back(0x82); //Control packet type
+		subscribePacket.push_back(MQTT_PACKET_SUBSCRIBE); //Control packet type
 		subscribePacket.insert(subscribePacket.end(), lengthBytes.begin(), lengthBytes.end());
 		subscribePacket.insert(subscribePacket.end(), payload.begin(), payload.end());
 		for(int32_t i = 0; i < 3; i++)
@@ -779,7 +778,7 @@ void Mqtt::subscribe(std::string topic)
 			try
 			{
 				std::vector<char> response;
-				getResponse(subscribePacket, response, 0x90, id, false);
+				getResponse(subscribePacket, response, MQTT_PACKET_SUBACK, id, false);
 				if(response.size() == 0 || (response.at(4) != 0 && response.at(4) != 1 && response.at(4) != 2))
 				{
 					//Ignore => mosquitto does not send SUBACK
@@ -923,17 +922,17 @@ void Mqtt::connect()
 			std::vector<char> lengthBytes = getLengthBytes(payload.size());
 			std::vector<char> connectPacket;
 			connectPacket.reserve(1 + lengthBytes.size() + payload.size());
-			connectPacket.push_back(0x10); //Control packet type
+			connectPacket.push_back(MQTT_PACKET_CONNECT); //Control packet type
 			connectPacket.insert(connectPacket.end(), lengthBytes.begin(), lengthBytes.end());
 			connectPacket.insert(connectPacket.end(), payload.begin(), payload.end());
 			std::vector<char> response(10);
-			getResponseByType(connectPacket, response, 0x20, false);
+			getResponseByType(connectPacket, response, MQTT_PACKET_CONNACK, false);
 			bool retry = false;
 			if(response.size() != 4)
 			{
 				if(response.size() == 0) {}
 				else if(response.size() != 4) _out.printError("Error: CONNACK packet has wrong size.");
-				else if(response[0] != 0x20 || response[1] != 0x02 || response[2] != 0) _out.printError("Error: CONNACK has wrong content.");
+				else if(response[0] != MQTT_PACKET_CONNACK || response[1] != 0x02 || response[2] != 0) _out.printError("Error: CONNACK has wrong content.");
 				else if(response[3] != 1) printConnectionError(response[3]);
 				retry = true;
 			}
@@ -945,7 +944,7 @@ void Mqtt::connect()
 				if(_settings.bmxTopic()) {
 					//subscribe format for IBM Bluemix Watson IOT Platform is pre-set by IBM, we have to adhere
 					//gatway commands
-					//subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
+					subscribe(_settings.bmxPrefix()+_settings.bmxGwTypeId()+"/id/"+_settings.bmxDeviceId()+"/cmd/+/fmt/+");
                subscribe("iotdm-1/response");
             } else {
 				    subscribe(_settings.prefix() + _settings.homegearId() + "/rpc/#");
@@ -1023,15 +1022,15 @@ void Mqtt::connect()
 				std::vector<char> lengthBytes = getLengthBytes(payload.size());
 				std::vector<char> connectPacket;
 				connectPacket.reserve(1 + lengthBytes.size() + payload.size());
-				connectPacket.push_back(0x10); //Control packet type
+				connectPacket.push_back(MQTT_PACKET_CONNECT); //Control packet type
 				connectPacket.insert(connectPacket.end(), lengthBytes.begin(), lengthBytes.end());
 				connectPacket.insert(connectPacket.end(), payload.begin(), payload.end());
-				getResponseByType(connectPacket, response, 0x20, false);
+				getResponseByType(connectPacket, response, MQTT_PACKET_CONNACK, false);
 				if(response.size() != 4)
 				{
 					if(response.size() == 0) _out.printError("Error: Connection to MQTT server with protocol version 3 failed.");
 					else if(response.size() != 4) _out.printError("Error: CONNACK packet has wrong size.");
-					else if(response[0] != 0x20 || response[1] != 0x02 || response[2] != 0) _out.printError("Error: CONNACK has wrong content.");
+					else if(response[0] != MQTT_PACKET_CONNACK || response[1] != 0x02 || response[2] != 0) _out.printError("Error: CONNACK has wrong content.");
 					else printConnectionError(response[3]);
 				}
 				else
@@ -1079,7 +1078,7 @@ void Mqtt::disconnect()
 	try
 	{
 		_connected = false;
-		std::vector<char> disconnect = { (char)0xE0, 0 };
+		std::vector<char> disconnect = { (char)MQTT_PACKET_DISCONN, 0 };
 		if(_socket->connected()) _socket->proofwrite(disconnect);
 		_socket->close();
 	}
@@ -1353,7 +1352,7 @@ try
 		if(!_socket->connected()) reconnect();
 		if(!_started) break;
 		if(i == 1) packet[0] |= 8;
-		getResponse(packet, response, 0x40, id, true);
+		getResponse(packet, response, MQTT_PACKET_PUBACK, id, true);
 		if(response.empty())
 		{
 			//_socket->close();
